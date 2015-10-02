@@ -21,15 +21,13 @@
 //A simple Example
 
 
-
-
-export class Point{
-    constructor(x,y){
+export class Point {
+    constructor(x, y) {
         this.x = x;
         this.y = y;
     }
 }
-if (require.main === module){
+if (require.main === module) {
     let pt = new Point(7,4);
-    console.log('My Point: $(JSON.stringify(pt)');
+    console.log('My point: ${JSON.stringify(pt)}');
 }
