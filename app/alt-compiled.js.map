@@ -1,0 +1,1 @@
+{"version":3,"sources":["alt.js"],"names":[],"mappings":";;;;;;;;mBAAgB,KAAK;;;;qBAEN,sBAAS","file":"alt-compiled.js","sourcesContent":["import Alt from \"alt\";\n\nexport default new Alt();"]}
