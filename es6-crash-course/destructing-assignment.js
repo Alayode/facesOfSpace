@@ -31,3 +31,9 @@ if (require.main === module) {
     let pt = new Point(7,4);
     console.log('My point: ${JSON.stringify(pt)}');
 }
+
+
+// The package babel has many more feature, are all documents on the Babel
+//website. For example, from within a normal Node Module, you can install a "require hook"
+// which compiles all required modules via Babel (except , by default, modules in node_modules)/
+
