@@ -43,6 +43,17 @@ juice.use(bodyParser.json());
 juice.use(express.static(path.join(__dirname,'public')));
 
 
+// Express middleware  components
+// WILL BE EXECUTED ON EVERY REQUEST TO THE SERVER.
+juice.use(function(req,res){
+    Router.run(routes, req.path,function(Handler){
+        var html = React.renderToString(React.createElement(Handler));
+        var page = swig.renderFile('views/index.html',{html:html});
+        res.send(page);
+    });
+});
+
+
 
 juice.listen(juice.get('port'),function(){
     console.log('Express server is using the JUICE on port ' + juice.set('port'));
