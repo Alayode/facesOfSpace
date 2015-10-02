@@ -1,0 +1,1 @@
+{"version":3,"sources":["routes.js"],"names":[],"mappings":";;;;qBAAkB,OAAO;;;;2BACL,cAAc;;6BAClB,kBAAkB;;;;8BACjB,mBAAmB","file":"routes-compiled.js","sourcesContent":["import React from 'react';\nimport {Route} from 'react-router';\nimport App from './components/App';\nimport Home from './components/Home';\n\n"]}
