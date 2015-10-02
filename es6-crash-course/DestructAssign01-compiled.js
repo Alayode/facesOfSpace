@@ -16,40 +16,42 @@
  *
  * */
 
-
 // ECMAScript 6 Features
-
 
 // Arrows and lexical This
 
-
-    //Arrows are a function shorthand using  => Syntax. They are syntactically simalar to the related feature in
-    // C#, Java 8  and CoffeeScript. They Support both expression and statement bodies. Unlike functions, arrows sharethe same
-    // the same lexical this as their surrounding code.
-
-
+//Arrows are a function shorthand using  => Syntax. They are syntactically simalar to the related feature in
+// C#, Java 8  and CoffeeScript. They Support both expression and statement bodies. Unlike functions, arrows sharethe same
+// the same lexical this as their surrounding code.
 
 // Expression bodies
 
-var odds = evens.map(v => v + 1);
-var nums = evens.map((v, i) => v + i);
+"use strict";
+
+var odds = evens.map(function (v) {
+    return v + 1;
+});
+var nums = evens.map(function (v, i) {
+    return v + i;
+});
 
 // Statement bodies
-nums.forEach(v => {
-    if (v % 5 === 0)
-        fives.push(v);
+nums.forEach(function (v) {
+    if (v % 5 === 0) fives.push(v);
 });
 
 // Lexical this
 var bob = {
     _name: "Bob",
     _friends: [],
-    printFriends() {
-        this._friends.forEach(f =>
-            console.log(this._name + " knows " + f));
+    printFriends: function printFriends() {
+        var _this = this;
+
+        this._friends.forEach(function (f) {
+            return console.log(_this._name + " knows " + f);
+        });
     }
 };
-
 
 /**
  * Remember...
@@ -60,4 +62,4 @@ var bob = {
  *
  */
 
-
+//# sourceMappingURL=DestructAssign01-compiled.js.map
