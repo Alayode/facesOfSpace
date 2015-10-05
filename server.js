@@ -54,7 +54,7 @@ juice.use(function(req,res){
 });
 
 
-
-juice.listen(juice.get('port'),function(){
-    console.log('Express server is using the JUICE on port ' + juice.set('port'));
-});
+//  TODO: Replace this block of code for socket.IO
+//juice.listen(juice.get('port'),function(){
+//    console.log('Express server is using the JUICE on port ' + juice.set('port'));
+//});
