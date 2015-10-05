@@ -136,7 +136,7 @@ var Footer = (function (_React$Component) {
                                 'You may view the ',
                                 _react2['default'].createElement(
                                     'a',
-                                    { href: 'https://github.com/sahat/newedenfaces-react' },
+                                    { href: 'https://github.com/Alayode/facesOfspace' },
                                     'Source Code'
                                 ),
                                 ' behind this project on GitHub.'
@@ -144,7 +144,7 @@ var Footer = (function (_React$Component) {
                             _react2['default'].createElement(
                                 'p',
                                 null,
-                                '© 2015 Sahat Yalkabov.'
+                                '© 2015 Kayode Alayode.'
                             )
                         ),
                         _react2['default'].createElement(

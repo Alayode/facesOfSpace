@@ -1,4 +1,18 @@
+/*
+* Chris Samuel
+* ksamuel.chris@gmail.com
+*
+* October 2 2015
+*
+*
+*
+* */
+
 'use strict';
+
+Object.defineProperty(exports, '__esModule', {
+    value: true
+});
 
 var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
 
@@ -16,6 +30,14 @@ var _react2 = _interopRequireDefault(_react);
 
 var _reactRouter = require('react-router');
 
+var _Navbar = require('./Navbar');
+
+var _Navbar2 = _interopRequireDefault(_Navbar);
+
+var _Footer = require('./Footer');
+
+var _Footer2 = _interopRequireDefault(_Footer);
+
 var App = (function (_React$Component) {
     _inherits(App, _React$Component);
 
@@ -27,10 +49,32 @@ var App = (function (_React$Component) {
 
     _createClass(App, [{
         key: 'render',
-        value: function render() {}
+        value: function render() {
+            return _react2['default'].createElement(
+                'div',
+                null,
+                _react2['default'].createElement(_Navbar2['default'], null),
+                _react2['default'].createElement(_reactRouter.RouteHandler, null),
+                _react2['default'].createElement(_Footer2['default'], null)
+            );
+        }
     }]);
 
     return App;
 })(_react2['default'].Component);
+
+exports['default'] = App;
+
+/*
+* Routehandler is a component that renders the active child route handler.
+* It will render one of the following components depending on the URL path:
+* Home,Top 100, Profile or Add Character.
+*
+*       AngularJS Equivalent : <div ng-view></div>
+ *              Which includes the rendered template of current route
+*               into the main layout.
+ *
+  * */
+module.exports = exports['default'];
 
 //# sourceMappingURL=app-compiled.js.map
