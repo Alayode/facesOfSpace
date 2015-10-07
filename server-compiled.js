@@ -52,8 +52,48 @@ juice.use(function (req, res) {
     });
 });
 
-juice.listen(juice.get('port'), function () {
-    console.log('Express server is using the JUICE on port ' + juice.set('port'));
+//  TODO: Replace this block of code for socket.IO
+//juice.listen(juice.get('port'),function(){
+//    console.log('Express server is using the JUICE on port ' + juice.set('port'));
+//});
+
+/**
+ * Socket.io stuff.
+ */
+var server = require('http').createServer(juice);
+var io = require('socket.io')(server);
+var onlineUsers = 0;
+
+io.sockets.on('connection', function (socket) {
+    onlineUsers++;
+
+    io.sockets.emit('onlineUsers', { onlineUsers: onlineUsers });
+
+    socket.on('disconnect', function () {
+        onlineUsers--;
+        io.sockets.emit('onlineUsers', { onlineUsers: onlineUsers });
+    });
 });
+
+server.listen(juice.get('port'), function () {
+    console.log('Express server listening on port ' + juice.get('port'));
+});
+/*
+* Explanation for refactor with socket.io
+*
+* WebSocket connections are established. With this block of code
+* when it does, the onlineUsers count will increase by 1 (This is a
+* global variable )and a message is then broadcasts
+*
+* " Hey I have this many users right now ."
+*
+* When someone closes a connection the count is then decreased by one
+* This will then run another message stating hey I have this many online users now.
+*
+*
+*
+*
+*
+* */
 
 //# sourceMappingURL=server-compiled.js.map

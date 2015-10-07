@@ -1,14 +1,3 @@
-/*
- * Chris Samuel
- * ksamuel.chris@icloud.com
- *
- * October 15, 2015
- *
- *   Filename : navbar.js
- *
- * */
-
-// we will import the following:
 'use strict';
 
 Object.defineProperty(exports, '__esModule', {
@@ -30,8 +19,6 @@ var _react = require('react');
 var _react2 = _interopRequireDefault(_react);
 
 var _reactRouter = require('react-router');
-
-//for navbar specific
 
 var _storesNavbarStore = require('../stores/NavbarStore');
 
@@ -61,11 +48,11 @@ var Navbar = (function (_React$Component) {
             var socket = io.connect();
 
             socket.on('onlineUsers', function (data) {
-                navbarActions.updateOnlineUsers(data);
+                _actionsNavbarActions2['default'].updateOnlineUsers(data);
             });
 
             $(document).ajaxStart(function () {
-                NavBarActions.updateOnlineUsers(data);
+                _actionsNavbarActions2['default'].updateAjaxAnimation('fadeIn');
             });
 
             $(document).ajaxComplete(function () {
@@ -94,7 +81,7 @@ var Navbar = (function (_React$Component) {
             if (searchQuery) {
                 _actionsNavbarActions2['default'].findCharacter({
                     searchQuery: searchQuery,
-                    searchFrom: this.refssearchForm.getDOMNode(),
+                    searchForm: this.refs.searchForm.getDOMNode(),
                     router: this.context.router
                 });
             }
@@ -114,7 +101,7 @@ var Navbar = (function (_React$Component) {
                         _react2['default'].createElement(
                             'span',
                             { className: 'sr-only' },
-                            'Toggle Navigation'
+                            'Toggle navigation'
                         ),
                         _react2['default'].createElement('span', { className: 'icon-bar' }),
                         _react2['default'].createElement('span', { className: 'icon-bar' }),
