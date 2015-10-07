@@ -1,5 +1,6 @@
 import alt from  '../alt';
 
+
 class AddCharacterActions{
     constructor() {
         this.generateActions(
