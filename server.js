@@ -23,29 +23,30 @@
 var swig   = require('swig');
 var React  = require('react');
 var Router = require('react-router');
-var routes = require('./app/routes');
-
-
-
-var express =    require('express');
 var path    =    require('path');
 var logger  =     require('morgan');
 var bodyParser = require('body-parser');
-//var babel =      require("babel-core").transform("code", options);
 
-//add some juice!!!
 
-var juice = express();
+//Add the mongoose module and Character.js file
+var mongoose = require('mongoose');
+var Character = require('./models/character');
+var express =    require('express');
 
-juice.set('port', process.env.PORT || 9876);
-juice.use(logger('dev'));
-juice.use(bodyParser.json());
-juice.use(express.static(path.join(__dirname,'public')));
+
+
+var routes = require('./app/routes');
+var app = express();
+
+app.set('port', process.env.PORT || 9876);
+app.use(logger('dev'));
+app.use(bodyParser.json());
+app.use(express.static(path.join(__dirname,'public')));
 
 
 // Express middleware  components
 // WILL BE EXECUTED ON EVERY REQUEST TO THE SERVER.
-juice.use(function(req,res){
+app.use(function(req,res){
     Router.run(routes, req.path,function(Handler){
         var html = React.renderToString(React.createElement(Handler));
         var page = swig.renderFile('views/index.html',{html:html});
@@ -53,8 +54,25 @@ juice.use(function(req,res){
     });
 });
 
+/**
+ * Socket.io stuff.
+ */
+var server = require('http').createServer(app);
+var io = require('socket.io')(server);
+var onlineUsers = 0;
 
-  //TODO: Replace this block of code for socket.IO
-juice.listen(juice.get('port'),function(){
-    console.log('Express server is using the JUICE on port ' + juice.set('port'));
+io.sockets.on('connection', function(socket) {
+    onlineUsers++;
+    console.log(onlineUsers)
+
+    io.sockets.emit('onlineUsers', { onlineUsers: onlineUsers });
+
+    socket.on('disconnect', function() {
+        onlineUsers--;
+        io.sockets.emit('onlineUsers', { onlineUsers: onlineUsers });
+    });
+});
+
+server.listen(app.get('port'), function() {
+    console.log('Express server listening on port ' + app.get('port'));
 });
