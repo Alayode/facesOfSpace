@@ -9,7 +9,7 @@
  *
  * Description:
  *
- * File will be used for running node/express for our voting application.
+ * File will be used for running node/express for our voting juicelication.
  * Chris Samuel
  * ksamuel.chris@gmail.com
  *
@@ -17,6 +17,12 @@
  *
  *
  * */
+
+//Express API Route Dependencies
+
+var async = require('async');
+var request = require('request');
+var xml2js = require('xml2js');
 
 //React Routes
 
@@ -35,18 +41,113 @@ var express =    require('express');
 
 
 
-var routes = require('./app/routes');
-var app = express();
+var routes = require('./juice/routes');
+var config = require('./config');
 
-app.set('port', process.env.PORT || 9876);
-app.use(logger('dev'));
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname,'public')));
+
+mongoose.connect(config.database);
+mongoose.connection.on('error', function() {
+    console.info('Error: Could not connect to MongoDB. Did you forget to run `mongod`?');
+});
+
+
+var juice = express();
+
+juice.set('port', process.env.PORT || 9876);
+juice.use(logger('dev'));
+juice.use(bodyParser.json());
+juice.use(express.static(path.join(__dirname,'public')));
+
+
+/*
+* POST /api/characters
+* Adds new characters to the database
+*
+* */
+
+
+juice.post('/api/characters', function(req,res,next){
+        var gender = req.body.gender;
+        var characterName = req.body.name;//get a Character ID from a Character Name
+
+        var characterIdLookupUrl = "https://api.eveonline.com/eve/CharacterID.xml.aspx?names=" + characterName;
+
+        // create a XML parser instance with xml2js
+        var parser = new xml2js.Parser();
+
+
+        //waterfall(tasks, [callback])
+            //use the name and the url to find if the name is in the database already
+    async.waterfall([
+            function(callback){
+                request.get(characterIdLookupUrl,function(err,request,xml){
+                    if(err)return next(err);
+                    //parse the XML reponse
+                    parser.parseString(xml,function(err,parsedXml){
+                        if (err) return next (err);
+                        try{
+
+                            var characterId = parsedXml.eveapi.result[0].row[0].$.characterID;
+
+
+                            Character.findOne({ characterId: character }, function(err,character){
+                                if(err) return next (err);
+
+                                if (character) {
+                                    return res.status(409).send({ message: character.name +'is already in database'})
+                                }
+
+                                callback(err,characterId);
+                            });
+
+                        }catch (e){
+                            return res.status(400).send({message: 'XML Parse Error'});
+                        }
+                    });
+                });
+            },//pass the CharacterID to the next function in the async .waterfall stage
+            function(characterId){
+                var characterInfoUrl = 'https://api.eveonline.com/eve/CharacterInfo.xml.aspx?characterID=' + characterId;
+
+                //get basic character information from a character ID
+                request.get({ url:characterInfoUrl},function(err,request,xml){
+                    if (err) return next (err);
+                    parser.parseString(xml,function(err,parsedXml){
+                        if (err) return res.send(err);
+                        try{
+                            var name = parsedXml.eveapi.result[0].characterName[0];
+                            var race = parsedXml.eveapi.result[0].race[0];
+                            var bloodline = parsedXml.eveapi.result[0].bloodline[0];
+
+                            var character = new  Character({
+                                characterId: characterId,
+                                name: name,
+                                race:race,
+                                bloodline:bloodline,
+                                gender:gender,
+                                random: [Math.random(),0]
+                            });//Add a new character to the database
+                        character.save(function (err) {
+                            if (err) return next (err);
+                            res.send({ message:characterName + 'has been added successfully'});
+                        });
+                        }catch (e){
+                            res.status(404).send({ message: characterName + 'is not a registered citzen of Faces of Space'})
+                        }
+                    });
+                });
+            }
+
+        ]);
+});
+
+
+
 
 
 // Express middleware  components
 // WILL BE EXECUTED ON EVERY REQUEST TO THE SERVER.
-app.use(function(req,res){
+juice.use(function(req,res){
     Router.run(routes, req.path,function(Handler){
         var html = React.renderToString(React.createElement(Handler));
         var page = swig.renderFile('views/index.html',{html:html});
@@ -57,13 +158,13 @@ app.use(function(req,res){
 /**
  * Socket.io stuff.
  */
-var server = require('http').createServer(app);
+var server = require('http').createServer(juice);
 var io = require('socket.io')(server);
 var onlineUsers = 0;
 
 io.sockets.on('connection', function(socket) {
     onlineUsers++;
-    console.log(onlineUsers)
+    console.log(onlineUsers);
 
     io.sockets.emit('onlineUsers', { onlineUsers: onlineUsers });
 
@@ -73,6 +174,6 @@ io.sockets.on('connection', function(socket) {
     });
 });
 
-server.listen(app.get('port'), function() {
-    console.log('Express server listening on port ' + app.get('port'));
+server.listen(juice.get('port'), function() {
+    console.log('Express server listening on port ' + juice.get('port'));
 });
