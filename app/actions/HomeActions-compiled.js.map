@@ -1,0 +1,1 @@
+{"version":3,"sources":["HomeActions.js"],"names":[],"mappings":";;;;;;mBAAgB,QAAQ;;;;IAElB,WAAW,GACF,SADT,WAAW,GACA;0BADX,WAAW;;AAET,QAAI,CAAC,WAAW,CAAA;CACnB","file":"HomeActions-compiled.js","sourcesContent":["import alt from '../alt';\n\nclass HomeActions{\n    constructor(){\n        this.generateAct\n    }\n}"]}
