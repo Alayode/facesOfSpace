@@ -9,7 +9,7 @@
  *
  * Description:
  *
- * File will be used for running node/express for our voting juicelication.
+ * File will be used for running node/express for our voting application.
  * Chris Samuel
  * ksamuel.chris@gmail.com
  *
@@ -44,6 +44,9 @@ var express =    require('express');
 var routes = require('./app/routes');
 var config = require('./config');
 
+//Underscore.js
+var _ = require('underscore');
+
 
 mongoose.connect(config.database);
 mongoose.connection.on('error', function() {
@@ -59,11 +62,58 @@ juice.use(bodyParser.json());
 juice.use(express.static(path.join(__dirname,'public')));
 
 
+/**
+ * GET /api/characters
+ * Returns 2 random characters of the same gender that have not been voted yet.
+ */
+juice.get('/api/characters', function(req, res, next) {
+    var choices = ['Female', 'Male'];
+    var randomGender = _.sample(choices);
+
+    Character.find({ random: { $near: [Math.random(), 0] } })
+        .where('voted', false)
+        .where('gender', randomGender)
+        .limit(2)
+        .exec(function(err, characters) {
+            if (err) return next(err);
+
+            if (characters.length === 2) {
+                return res.send(characters);
+            }
+
+            var oppositeGender = _.first(_.without(choices, randomGender));
+
+            Character
+                .find({ random: { $near: [Math.random(), 0] } })
+                .where('voted', false)
+                .where('gender', oppositeGender)
+                .limit(2)
+                .exec(function(err, characters) {
+                    if (err) return next(err);
+
+                    if (characters.length === 2) {
+                        return res.send(characters);
+                    }
+
+                    Character.update({}, { $set: { voted: false } }, { multi: true }, function(err) {
+                        if (err) return next(err);
+                        res.send([]);
+                    });
+                });
+        });
+});
+
+
+
+
+
 /*
 * POST /api/characters
 * Adds new characters to the database
 *
 * */
+
+
 
 
 juice.post('/api/characters', function(req,res,next){
@@ -148,7 +198,7 @@ juice.post('/api/characters', function(req,res,next){
  * PUT /api/characters
  * Update winning and losing count for both characters.
  */
-app.put('/api/characters', function(req, res, next) {
+juice.put('/api/characters', function(req, res, next) {
   var winner = req.body.winner;
   var loser = req.body.loser;
 
@@ -222,7 +272,7 @@ app.put('/api/characters', function(req, res, next) {
  * Returns the total number of characters.
  */
 
-app.get('/api/characters/count', function(req, res, next) {
+juice.get('/api/characters/count', function(req, res, next) {
     Character.count({}, function(err, count) {
         if (err) return next(err);
         res.send({ count: count });
@@ -239,7 +289,7 @@ app.get('/api/characters/count', function(req, res, next) {
  *
  */
 
-app.get('api/characters/top', function(req,res,next){
+juice.get('api/characters/top', function(req,res,next){
             var params = req.query;
             var conditions =  {};
 
