@@ -230,6 +230,44 @@ app.get('/api/characters/count', function(req, res, next) {
 });
 
 
+/**
+ *
+ * GET /api/characters/top
+ * return top 50  Highest ranked characters. Filter by gender, race and bloodline.
+ *
+ *
+ *
+ */
+
+app.get('api/characters/top', function(req,res,next){
+            var params = req.query;
+            var conditions =  {};
+
+    _.each(params, function(value,key){
+        conditions[key] = new RegExp('^' + value + '$', 'i');
+    });
+
+    Character
+        .find(conditions)
+        .sort('-wins') // Sort in descending order (highest wins on top)
+        .limit(50)
+        .exec(function(err,characters){
+            if (err) return next (err);
+
+
+            // Sort by winning percentage
+            characters.sort(function(a,b){
+                if(a.wins / (a.wins + a.losses) < b.wins / (b.wins + b.losses)) {return 1;}
+                if(a.wins / (a.wins + a.losses) > b.wins / (b.wins + b.losses)) {return -1;}
+                return 0;
+            });
+            res.send(characters);
+
+        });
+
+});
+
+
 
 // Express middleware  components
 // WILL BE EXECUTED ON EVERY REQUEST TO THE SERVER.
