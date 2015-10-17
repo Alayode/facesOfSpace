@@ -185,6 +185,12 @@ app.put('/api/characters', function(req, res, next) {
       if (winner.voted || loser.voted) {
         return res.status(200).end();
       }
+    //We are using Async parallel to make two database queries
+    //    simultaneously, since one query does not depend on another
+    //    however, because we have two separate MongoDB documents,
+    //    that's two independent asynchronous operations, hence
+    // another async.parallel. Basically, we respond with a success only when
+    // both characters have finished updating and there were no errors
 
       async.parallel([
         function(callback) {
