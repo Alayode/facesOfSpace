@@ -217,6 +217,18 @@ app.put('/api/characters', function(req, res, next) {
 });
 
 
+/**
+ * GET /api/characters/count
+ * Returns the total number of characters.
+ */
+
+app.get('/api/characters/count', function(req, res, next) {
+    Character.count({}, function(err, count) {
+        if (err) return next(err);
+        res.send({ count: count });
+    });
+});
+
 
 
 // Express middleware  components
