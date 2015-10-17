@@ -319,6 +319,28 @@ juice.get('/api/characters/top', function(req,res,next){
 
 
 
+
+
+
+/**
+ * GET /api/characters/shame
+ * Returns 100 lowest ranked characters.
+ */
+juice.get('/api/characters/shame', function(req, res, next) {
+    Character
+        .find()
+        .sort('-losses')
+        .limit(100)
+        .exec(function(err, characters) {
+            if (err) return next(err);
+            res.send(characters);
+        });
+});
+
+
+
+
+
 // Express middleware  components
 // WILL BE EXECUTED ON EVERY REQUEST TO THE SERVER.
 juice.use(function(req,res){
