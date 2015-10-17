@@ -289,7 +289,7 @@ juice.get('/api/characters/count', function(req, res, next) {
  *
  */
 
-juice.get('api/characters/top', function(req,res,next){
+juice.get('/api/characters/top', function(req,res,next){
             var params = req.query;
             var conditions =  {};
 
