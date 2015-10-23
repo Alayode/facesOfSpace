@@ -356,6 +356,33 @@ juice.get('/api/characters/shame', function(req, res, next) {
   });
 });
 
+/**
+ * POST /api/report
+ * Reports a character. Character is removed after 4 reports.
+ */
+juice.post('/api/report', function(req, res, next) {
+  var characterId = req.body.characterId;
+
+  Character.findOne({ characterId: characterId }, function(err, character) {
+    if (err) return next(err);
+
+    if (!character) {
+      return res.status(404).send({ message: 'Character not found.' });
+    }
+
+    character.reports++;
+
+    if (character.reports > 4) {
+      character.remove();
+      return res.send({ message: character.name + ' has been deleted.' });
+    }
+
+    character.save(function(err) {
+      if (err) return next(err);
+      res.send({ message: character.name + ' has been reported.' });
+    });
+  });
+});
 
 // Express middleware  components
 // WILL BE EXECUTED ON EVERY REQUEST TO THE SERVER.
