@@ -384,6 +384,27 @@ juice.post('/api/report', function(req, res, next) {
   });
 });
 
+/*
+GET /api/stats
+Returns characters statistics.
+*/
+
+juice.get('/api/stats',function(req,res,next){
+  async.parallel({
+    function(callback){
+      Character.count({}, function(err,count){
+        callback(err,count);
+      });
+    },
+    function(callback){
+      Character.count({ race: 'Caldari'} function(err,caldariCount){
+        callback(err,caldariCount);
+      });
+    }
+  })
+})
+
+
 // Express middleware  components
 // WILL BE EXECUTED ON EVERY REQUEST TO THE SERVER.
 juice.use(function(req,res){
