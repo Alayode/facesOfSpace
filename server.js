@@ -338,7 +338,23 @@ juice.get('/api/characters/shame', function(req, res, next) {
 });
 
 
+/**
+ * GET /api/characters/:id
+ * Returns detailed character information.
+ */
+ juice.get('/api/characters/:id', function(req, res, next) {
+  var id = req.params.id;
 
+  Character.findOne({ characterId: id }, function(err, character) {
+    if (err) return next(err);
+
+    if (!character) {
+      return res.status(404).send({ message: 'Character not found.' });
+    }
+
+    res.send(character);
+  });
+});
 
 
 // Express middleware  components
