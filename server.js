@@ -397,11 +397,51 @@ juice.get('/api/stats',function(req,res,next){
       });
     },
     function(callback){
-      Character.count({ race: 'Caldari'} function(err,caldariCount){
+      Character.count({ race: 'Amarr'} function(err,AmarrCount){
         callback(err,caldariCount);
       });
-    }
-  })
+    },
+    function(callback){
+      Character.count({race : 'Caldari'}, function(err,caldariCount){
+        callback(err, gallenteCount);
+      });
+    },
+    function(callback){
+      Character.count({race : 'Gallente'}, function(err,gallenteCount){
+        callback(err, gallenteCount);
+      });
+    },
+    function(callback){
+      Character.count({race : 'Minmatar'}, function(err,minmatarCount){
+        callback(err, minmatarCount);
+      });
+    },
+    function(callback){
+      Character.aggregate({$group: {_id: null, total:{ $sum: '$wins'}}}, function(err, totalVotes){
+        var total = totalVotes.length ? totalVotes[0].total : 0;
+        callback(err,total);
+      }
+    };
+  },
+  function(callback){
+    Character
+      .find()
+      .sort('-wins')
+      .limit(100)
+      .select('race')
+      .exec(function(err, chraracters){
+        if (err) return next (err);
+
+        var raceCount = _.countBy(chraracters,function(character){
+          return character.race }};
+          var max = _.max(raceCount,function(race){ return race});
+          var topRace
+        })
+
+
+      })
+
+  }
 })
 
 

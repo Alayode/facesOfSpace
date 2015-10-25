@@ -20,6 +20,7 @@ class App extends React.Component {
             <div>
                 <Navbar />
                 <RouteHandler  />
+
                 <Footer />
             </div>
             );
