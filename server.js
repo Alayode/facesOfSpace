@@ -32,7 +32,8 @@ var Router = require('react-router');
 var path    =    require('path');
 var logger  =     require('morgan');
 var bodyParser = require('body-parser');
-
+var compression = require('compression');
+var favicon = require('serve-favicon');
 
 //Add the mongoose module and Character.js file
 var mongoose = require('mongoose');
@@ -56,142 +57,59 @@ mongoose.connection.on('error', function() {
 
 var juice = express();
 
-juice.set('port', process.env.PORT || 9876);
+mongoose.connect(config.database);
+mongoose.connection.on('error', function() {
+  console.info('Error: Could not connect to MongoDB. Did you forget to run `mongod`?'.red);
+});
+
+juice.set('port', process.env.PORT || 3000);
+juice.use(compression());
 juice.use(logger('dev'));
 juice.use(bodyParser.json());
-juice.use(express.static(path.join(__dirname,'public')));
-
+juice.use(bodyParser.urlencoded({ extended: false }));
+juice.use(favicon(path.join(__dirname, 'public', 'favicon.png')));
+juice.use(express.static(path.join(__dirname, 'public')));
 
 /**
  * GET /api/characters
  * Returns 2 random characters of the same gender that have not been voted yet.
  */
 juice.get('/api/characters', function(req, res, next) {
-    var choices = ['Female', 'Male'];
-    var randomGender = _.sample(choices);
+  var choices = ['Female', 'Male'];
+  var randomGender = _.sample(choices);
 
-    Character.find({ random: { $near: [Math.random(), 0] } })
+  Character.find({ random: { $near: [Math.random(), 0] } })
+    .where('voted', false)
+    .where('gender', randomGender)
+    .limit(2)
+    .exec(function(err, characters) {
+      if (err) return next(err);
+
+      if (characters.length === 2) {
+        return res.send(characters);
+      }
+
+      var oppositeGender = _.first(_.without(choices, randomGender));
+
+      Character
+        .find({ random: { $near: [Math.random(), 0] } })
         .where('voted', false)
-        .where('gender', randomGender)
+        .where('gender', oppositeGender)
         .limit(2)
         .exec(function(err, characters) {
+          if (err) return next(err);
+
+          if (characters.length === 2) {
+            return res.send(characters);
+          }
+
+          Character.update({}, { $set: { voted: false } }, { multi: true }, function(err) {
             if (err) return next(err);
-
-            if (characters.length === 2) {
-                return res.send(characters);
-            }
-
-            var oppositeGender = _.first(_.without(choices, randomGender));
-
-            Character
-                .find({ random: { $near: [Math.random(), 0] } })
-                .where('voted', false)
-                .where('gender', oppositeGender)
-                .limit(2)
-                .exec(function(err, characters) {
-                    if (err) return next(err);
-
-                    if (characters.length === 2) {
-                        return res.send(characters);
-                    }
-
-                    Character.update({}, { $set: { voted: false } }, { multi: true }, function(err) {
-                        if (err) return next(err);
-                        res.send([]);
-                    });
-                });
+            res.send([]);
+          });
         });
+    });
 });
-
-
-
-
-
-/*
-* POST /api/characters
-* Adds new characters to the database
-*
-* */
-
-
-
-
-juice.post('/api/characters', function(req,res,next){
-        var gender = req.body.gender;
-        var characterName = req.body.name;//get a Character ID from a Character Name
-
-        var characterIdLookupUrl = "https://api.eveonline.com/eve/CharacterID.xml.aspx?names=" + characterName;
-
-        // create a XML parser instance with xml2js
-        var parser = new xml2js.Parser();
-
-
-        //waterfall(tasks, [callback])
-            //use the name and the url to find if the name is in the database already
-    async.waterfall([
-            function(callback){
-                request.get(characterIdLookupUrl,function(err,request,xml){
-                    if(err)return next(err);
-                    //parse the XML reponse
-                    parser.parseString(xml,function(err,parsedXml){
-                        if (err) return next (err);
-                        try{
-
-                            var characterId = parsedXml.eveapi.result[0].row[0].$.characterID;
-
-
-                            Character.findOne({ characterId: character }, function(err,character){
-                                if(err) return next (err);
-
-                                if (character) {
-                                    return res.status(409).send({ message: character.name +'is already in database'})
-                                }
-
-                                callback(err,characterId);
-                            });
-
-                        }catch (e){
-                            return res.status(400).send({message: 'XML Parse Error'});
-                        }
-                    });
-                });
-            },//pass the CharacterID to the next function in the async .waterfall stage
-            function(characterId){
-                var characterInfoUrl = 'https://api.eveonline.com/eve/CharacterInfo.xml.aspx?characterID=' + characterId;
-
-                //get basic character information from a character ID
-                request.get({ url:characterInfoUrl},function(err,request,xml){
-                    if (err) return next (err);
-                    parser.parseString(xml,function(err,parsedXml){
-                        if (err) return res.send(err);
-                        try{
-                            var name = parsedXml.eveapi.result[0].characterName[0];
-                            var race = parsedXml.eveapi.result[0].race[0];
-                            var bloodline = parsedXml.eveapi.result[0].bloodline[0];
-
-                            var character = new  Character({
-                                characterId: characterId,
-                                name: name,
-                                race:race,
-                                bloodline:bloodline,
-                                gender:gender,
-                                random: [Math.random(),0]
-                            });//Add a new character to the database
-                        character.save(function (err) {
-                            if (err) return next (err);
-                            res.send({ message:characterName + 'has been added successfully'});
-                        });
-                        }catch (e){
-                            res.status(404).send({ message: characterName + 'is not a registered citzen of Faces of Space'})
-                        }
-                    });
-                });
-            }
-
-        ]);
-});
-
-
 
 
 /**
@@ -235,12 +153,6 @@ juice.put('/api/characters', function(req, res, next) {
       if (winner.voted || loser.voted) {
         return res.status(200).end();
       }
-    //We are using Async parallel to make two database queries
-    //    simultaneously, since one query does not depend on another
-    //    however, because we have two separate MongoDB documents,
-    //    that's two independent asynchronous operations, hence
-    // another async.parallel. Basically, we respond with a success only when
-    // both characters have finished updating and there were no errors
 
       async.parallel([
         function(callback) {
@@ -266,83 +178,84 @@ juice.put('/api/characters', function(req, res, next) {
     });
 });
 
-
-/**
- * GET /api/characters/count
- * Returns the total number of characters.
- */
-
-juice.get('/api/characters/count', function(req, res, next) {
-    Character.count({}, function(err, count) {
-        if (err) return next(err);
-        res.send({ count: count });
-    });
-});
-
-
-/**
- *
- * GET /api/characters/top
- * return top 50  Highest ranked characters. Filter by gender, race and bloodline.
- *
- *
- *
- */
-
-juice.get('/api/characters/top', function(req,res,next){
-            var params = req.query;
-            var conditions =  {};
-
-    _.each(params, function(value,key){
-        conditions[key] = new RegExp('^' + value + '$', 'i');
-    });
-
-    Character
-        .find(conditions)
-        .sort('-wins') // Sort in descending order (highest wins on top)
-        .limit(50)
-        .exec(function(err,characters){
-            if (err) return next (err);
-
-
-            // Sort by winning percentage
-            characters.sort(function(a,b){
-                if(a.wins / (a.wins + a.losses) < b.wins / (b.wins + b.losses)) {return 1;}
-                if(a.wins / (a.wins + a.losses) > b.wins / (b.wins + b.losses)) {return -1;}
-                return 0;
-            });
-            res.send(characters);
-
-        });
-
-});
-
-
-
-
-
-
 /**
  * GET /api/characters/shame
  * Returns 100 lowest ranked characters.
  */
 juice.get('/api/characters/shame', function(req, res, next) {
-    Character
-        .find()
-        .sort('-losses')
-        .limit(100)
-        .exec(function(err, characters) {
-            if (err) return next(err);
-            res.send(characters);
-        });
+  Character
+    .find()
+    .sort('-losses')
+    .limit(100)
+    .exec(function(err, characters) {
+      if (err) return next(err);
+      res.send(characters);
+    });
 });
 
+/**
+ * GET /api/characters/top
+ * Return 100 highest ranked characters. Filter by gender, race and bloodline.
+ */
+juice.get('/api/characters/top', function(req, res, next) {
+  var params = req.query;
+  var conditions = {};
+
+  _.each(params, function(value, key) {
+    conditions[key] = new RegExp('^' + value + '$', 'i');
+  });
+
+  Character
+    .find(conditions)
+    .sort('-wins')
+    .limit(100)
+    .exec(function(err, characters) {
+      if (err) return next(err);
+
+      characters.sort(function(a, b) {
+        if (a.wins / (a.wins + a.losses) < b.wins / (b.wins + b.losses)) { return 1; }
+        if (a.wins / (a.wins + a.losses) > b.wins / (b.wins + b.losses)) { return -1; }
+        return 0;
+      });
+
+      res.send(characters);
+    });
+});
+
+/**
+ * GET /api/characters/count
+ * Returns the total number of characters.
+ */
+juice.get('/api/characters/count', function(req, res, next) {
+  Character.count({}, function(err, count) {
+    if (err) return next(err);
+    res.send({ count: count });
+  });
+});
+
+/**
+ * GET /api/characters/search
+ * Looks up a character by name. (case-insensitive)
+ */
+juice.get('/api/characters/search', function(req, res, next) {
+  var characterName = new RegExp(req.query.name, 'i');
+
+  Character.findOne({ name: characterName }, function(err, character) {
+    if (err) return next(err);
+
+    if (!character) {
+      return res.status(404).send({ message: 'Character not found.' });
+    }
+
+    res.send(character);
+  });
+});
 
 /**
  * GET /api/characters/:id
  * Returns detailed character information.
  */
- juice.get('/api/characters/:id', function(req, res, next) {
+juice.get('/api/characters/:id', function(req, res, next) {
   var id = req.params.id;
 
   Character.findOne({ characterId: id }, function(err, character) {
@@ -355,6 +268,179 @@ juice.get('/api/characters/shame', function(req, res, next) {
     res.send(character);
   });
 });
+
+/**
+ * POST /api/characters
+ * Adds new character to the database.
+ */
+juice.post('/api/characters', function(req, res, next) {
+  var gender = req.body.gender;
+  var characterName = req.body.name;
+  var characterIdLookupUrl = 'https://api.eveonline.com/eve/CharacterID.xml.aspx?names=' + characterName;
+
+  var parser = new xml2js.Parser();
+
+  async.waterfall([
+    function(callback) {
+      request.get(characterIdLookupUrl, function(err, request, xml) {
+        if (err) return next(err);
+        parser.parseString(xml, function(err, parsedXml) {
+          if (err) return next(err);
+          try {
+            var characterId = parsedXml.eveapi.result[0].rowset[0].row[0].$.characterID;
+
+            Character.findOne({ characterId: characterId }, function(err, character) {
+              if (err) return next(err);
+
+              if (character) {
+                return res.status(409).send({ message: character.name + ' is already in the database.' });
+              }
+
+              callback(err, characterId);
+            });
+          } catch (e) {
+            return res.status(400).send({ message: 'XML Parse Error' });
+          }
+        });
+      });
+    },
+    function(characterId) {
+      var characterInfoUrl = 'https://api.eveonline.com/eve/CharacterInfo.xml.aspx?characterID=' + characterId;
+
+      request.get({ url: characterInfoUrl }, function(err, request, xml) {
+        if (err) return next(err);
+        parser.parseString(xml, function(err, parsedXml) {
+          if (err) return res.send(err);
+          try {
+            var name = parsedXml.eveapi.result[0].characterName[0];
+            var race = parsedXml.eveapi.result[0].race[0];
+            var bloodline = parsedXml.eveapi.result[0].bloodline[0];
+
+            var character = new Character({
+              characterId: characterId,
+              name: name,
+              race: race,
+              bloodline: bloodline,
+              gender: gender,
+              random: [Math.random(), 0]
+            });
+
+            character.save(function(err) {
+              if (err) return next(err);
+              res.send({ message: characterName + ' has been added successfully!' });
+            });
+          } catch (e) {
+            res.status(404).send({ message: characterName + ' is not a registered citizen of New Eden.' });
+          }
+        });
+      });
+    }
+  ]);
+});
+
+/**
+ * GET /api/stats
+ * Returns characters statistics.
+ */
+juice.get('/api/stats', function(req, res, next) {
+  async.parallel([
+      function(callback) {
+        Character.count({}, function(err, count) {
+          callback(err, count);
+        });
+      },
+      function(callback) {
+        Character.count({ race: 'Amarr' }, function(err, amarrCount) {
+          callback(err, amarrCount);
+        });
+      },
+      function(callback) {
+        Character.count({ race: 'Caldari' }, function(err, caldariCount) {
+          callback(err, caldariCount);
+        });
+      },
+      function(callback) {
+        Character.count({ race: 'Gallente' }, function(err, gallenteCount) {
+          callback(err, gallenteCount);
+        });
+      },
+      function(callback) {
+        Character.count({ race: 'Minmatar' }, function(err, minmatarCount) {
+          callback(err, minmatarCount);
+        });
+      },
+      function(callback) {
+        Character.count({ gender: 'Male' }, function(err, maleCount) {
+          callback(err, maleCount);
+        });
+      },
+      function(callback) {
+        Character.count({ gender: 'Female' }, function(err, femaleCount) {
+          callback(err, femaleCount);
+        });
+      },
+      function(callback) {
+        Character.aggregate({ $group: { _id: null, total: { $sum: '$wins' } } }, function(err, totalVotes) {
+            var total = totalVotes.length ? totalVotes[0].total : 0;
+            callback(err, total);
+          }
+        );
+      },
+      function(callback) {
+        Character
+          .find()
+          .sort('-wins')
+          .limit(100)
+          .select('race')
+          .exec(function(err, characters) {
+            if (err) return next(err);
+
+            var raceCount = _.countBy(characters, function(character) { return character.race; });
+            var max = _.max(raceCount, function(race) { return race });
+            var inverted = _.invert(raceCount);
+            var topRace = inverted[max];
+            var topCount = raceCount[topRace];
+
+            callback(err, { race: topRace, count: topCount });
+          });
+      },
+      function(callback) {
+        Character
+          .find()
+          .sort('-wins')
+          .limit(100)
+          .select('bloodline')
+          .exec(function(err, characters) {
+            if (err) return next(err);
+
+            var bloodlineCount = _.countBy(characters, function(character) { return character.bloodline; });
+            var max = _.max(bloodlineCount, function(bloodline) { return bloodline });
+            var inverted = _.invert(bloodlineCount);
+            var topBloodline = inverted[max];
+            var topCount = bloodlineCount[topBloodline];
+
+            callback(err, { bloodline: topBloodline, count: topCount });
+          });
+      }
+    ],
+    function(err, results) {
+      if (err) return next(err);
+
+      res.send({
+        totalCount: results[0],
+        amarrCount: results[1],
+        caldariCount: results[2],
+        gallenteCount: results[3],
+        minmatarCount: results[4],
+        maleCount: results[5],
+        femaleCount: results[6],
+        totalVotes: results[7],
+        leadingRace: results[8],
+        leadingBloodline: results[9]
+      });
+    });
+});
+
 
 /**
  * POST /api/report
@@ -384,75 +470,26 @@ juice.post('/api/report', function(req, res, next) {
   });
 });
 
-/*
-GET /api/stats
-Returns characters statistics.
-*/
+juice.use(function(req, res) {
+  Router.match({ routes: routes, location: req.url }, function(err, redirectLocation, renderProps) {
+    if (err) {
+      res.status(500).send(err.message)
+    } else if (redirectLocation) {
+      res.status(302).redirect(redirectLocation.pathname + redirectLocation.search)
+    } else if (renderProps) {
+      var html = ReactDOM.renderToString(<RoutingContext {...renderProps} />);
+      var page = swig.renderFile('views/index.html', { html: html });
+      res.status(200).send(page);
+    } else {
+      res.status(404).send('Page Not Found')
+    }
+  });
+});
 
-juice.get('/api/stats',function(req,res,next){
-  async.parallel({
-    function(callback){
-      Character.count({}, function(err,count){
-        callback(err,count);
-      });
-    },
-    function(callback){
-      Character.count({ race: 'Amarr'} function(err,AmarrCount){
-        callback(err,caldariCount);
-      });
-    },
-    function(callback){
-      Character.count({race : 'Caldari'}, function(err,caldariCount){
-        callback(err, gallenteCount);
-      });
-    },
-    function(callback){
-      Character.count({race : 'Gallente'}, function(err,gallenteCount){
-        callback(err, gallenteCount);
-      });
-    },
-    function(callback){
-      Character.count({race : 'Minmatar'}, function(err,minmatarCount){
-        callback(err, minmatarCount);
-      });
-    },
-    function(callback){
-      Character.aggregate({$group: {_id: null, total:{ $sum: '$wins'}}}, function(err, totalVotes){
-        var total = totalVotes.length ? totalVotes[0].total : 0;
-        callback(err,total);
-      }
-    };
-  },
-  function(callback){
-    Character
-      .find()
-      .sort('-wins')
-      .limit(100)
-      .select('race')
-      .exec(function(err, chraracters){
-        if (err) return next (err);
-
-        var raceCount = _.countBy(chraracters,function(character){
-          return character.race }};
-          var max = _.max(raceCount,function(race){ return race});
-          var topRace
-        })
-
-
-      })
-
-  }
-})
-
-
-// Express middleware  components
-// WILL BE EXECUTED ON EVERY REQUEST TO THE SERVER.
-juice.use(function(req,res){
-    Router.run(routes, req.path,function(Handler){
-        var html = React.renderToString(React.createElement(Handler));
-        var page = swig.renderFile('views/index.html',{html:html});
-        res.send(page);
-    });
+juice.use(function(err, req, res, next) {
+  console.log(err.stack.red);
+  res.status(err.status || 500);
+  res.send({ message: err.message });
 });
 
 /**
@@ -463,17 +500,16 @@ var io = require('socket.io')(server);
 var onlineUsers = 0;
 
 io.sockets.on('connection', function(socket) {
-    onlineUsers++;
-    console.log(onlineUsers);
+  onlineUsers++;
 
+  io.sockets.emit('onlineUsers', { onlineUsers: onlineUsers });
+
+  socket.on('disconnect', function() {
+    onlineUsers--;
     io.sockets.emit('onlineUsers', { onlineUsers: onlineUsers });
-
-    socket.on('disconnect', function() {
-        onlineUsers--;
-        io.sockets.emit('onlineUsers', { onlineUsers: onlineUsers });
-    });
+  });
 });
 
 server.listen(juice.get('port'), function() {
-    console.log('Express server listening on port ' + juice.get('port'));
+  console.log('Express server listening on port ' + juice.get('port'));
 });
